@@ -18,12 +18,30 @@ public class GameManager {
     private final GameEngine engine;
     private boolean gameStarted = false;
     private Timer lobbyTimer;
+    private int roundNumber = 1;
     
     // Usamos um HashMap normal, vamos proteger o acesso com synchronized(this)
     private final Map<Integer, String> currentRoundMoves = new HashMap<>();
 
     public GameManager() {
         this.engine = new GameEngine();
+    }
+
+    public synchronized boolean isGameStarted() {
+        return gameStarted;
+    }
+
+    public synchronized void playerDisconnected(ClientHandler player) {
+        players.remove(player);
+        System.out.println("Removida referência da Player pool.");
+        if (gameStarted) {
+            currentRoundMoves.remove(player.getPlayerId());
+            if (players.isEmpty()) {
+                stopGame();
+            } else {
+                checkRoundCompletion();
+            }
+        }
     }
 
     // Adiciona um jogador e verifica se o jogo pode começar
@@ -62,6 +80,11 @@ public class GameManager {
                         startGame();
                     } else if (!gameStarted) {
                         System.out.println("Lobby cancelado: jogadores insuficientes.");
+                        for (ClientHandler p : players) {
+                            p.sendMessage(Protocol.END_LOSE + " LOBBY CANCELADO");
+                            p.closeConnection();
+                        }
+                        players.clear();
                     }
                 }
             }
@@ -71,6 +94,7 @@ public class GameManager {
     private void startGame() {
         if (lobbyTimer != null) lobbyTimer.cancel();
         gameStarted = true;
+        roundNumber = 1;
         
         // Mensagem inicial de acordo com o protocolo
         broadcast(Protocol.START + " " + engine.getMask() + " " + engine.getAttempts() + " 30000");
@@ -81,7 +105,8 @@ public class GameManager {
     public void nextRound() {
         synchronized(this) {
             currentRoundMoves.clear(); // Limpa as jogadas da ronda anterior
-            String state = Protocol.ROUND + " " + engine.getMask() + " " + engine.getAttempts() + " " + engine.getUsedLetters();
+            String state = Protocol.ROUND + " " + roundNumber + " " + engine.getMask() + " " + engine.getAttempts() + " " + engine.getUsedLetters();
+            roundNumber++;
             broadcast(state);
         }
     }
@@ -91,18 +116,39 @@ public class GameManager {
         synchronized(this) {
             if (!gameStarted) return;
 
-            // Regista a jogada (se o jogador já jogou nesta ronda, substitui)
-            currentRoundMoves.put(playerId, move);
-            System.out.println("Jogador " + playerId + " enviou: " + move);
-
-            // Se todos os jogadores ligados já submeteram a sua jogada
-            if (currentRoundMoves.size() == players.size()) {
-                processEndOfRound();
+            // Aceita apenas a primeira jogada de cada utilizador na ronda
+            if (!currentRoundMoves.containsKey(playerId)) {
+                currentRoundMoves.put(playerId, move);
+                System.out.println("Jogador " + playerId + " enviou: '" + move + "'");
+                checkRoundCompletion();
             }
         }
     }
 
+    private void checkRoundCompletion() {
+        if (gameStarted && !players.isEmpty() && currentRoundMoves.size() == players.size()) {
+            processEndOfRound();
+        }
+    }
+
     private void processEndOfRound() {
+        List<String> winners = new ArrayList<>();
+        
+        // Identificar os IDs vencedores (adivinhou a palavra ou completou letra que faltava)
+        for (Map.Entry<Integer, String> entry : currentRoundMoves.entrySet()) {
+            int pId = entry.getKey();
+            String m = entry.getValue().toUpperCase();
+            
+            if (m.equals(engine.getTargetWord())) {
+                winners.add(String.valueOf(pId));
+            } else if (m.length() == 1) {
+                char c = m.charAt(0);
+                if (engine.getTargetWord().indexOf(c) >= 0 && !engine.getUsedLetters().contains(String.valueOf(c))) {
+                    winners.add(String.valueOf(pId));
+                }
+            }
+        }
+
         // Processar todas as jogadas na Engine
         for (String move : currentRoundMoves.values()) {
             engine.processGuess(move);
@@ -110,7 +156,8 @@ public class GameManager {
 
         // Verificar vitória ou derrota
         if (engine.isWin()) {
-            broadcast(Protocol.END_WIN + " (Todos) " + engine.getTargetWord());
+            if (winners.isEmpty()) winners.add("Nenhum"); // Segurança
+            broadcast(Protocol.END_WIN + " " + String.join(",", winners) + " " + engine.getTargetWord());
             stopGame();
         } else if (engine.getAttempts() <= 0) {
             broadcast(Protocol.END_LOSE + " " + engine.getTargetWord());

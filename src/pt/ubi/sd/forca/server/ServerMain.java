@@ -24,7 +24,7 @@ public class ServerMain {
         // Criar o gestor do jogo que vai controlar a lógica e os jogadores
         GameManager manager = new GameManager();
         
-        System.out.println("=== SERVIDOR JOGO DA FORCA (UBI) ===");
+        System.out.println("=== SERVIDOR JOGO DA FORCA ===");
         
         // Abrir o ServerSocket no porto definido na Config
         try (ServerSocket serverSocket = new ServerSocket(Config.PORT)) {
