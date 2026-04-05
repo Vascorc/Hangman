@@ -18,26 +18,41 @@ public class ClientHandler extends Thread {
     public ClientHandler(Socket socket, GameManager manager) {
         this.socket = socket;
         this.manager = manager;
+        try {
+            this.out = new PrintWriter(socket.getOutputStream(), true);
+            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            System.err.println("Falha ao abrir fluxos I/O do cliente.");
+        }
     }
 
     public void setPlayerId(int id) { this.playerId = id; }
+    
+    public int getPlayerId() { return this.playerId; }
 
     @Override
     public void run() {
         try {
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            socket.setSoTimeout(30000); // 30 segundos timeout por ronda
 
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.startsWith(Protocol.GUESS)) {
-                    String move = line.substring(6).trim(); // Remove "GUESS "
-                    manager.handlePlayerMove(playerId, move);
+            while (true) {
+                try {
+                    String line = in.readLine();
+                    if (line == null) break; // Desconexão limpa
+                    if (line.startsWith(Protocol.GUESS)) {
+                        String move = line.substring(6).trim(); // Remove "GUESS "
+                        manager.handlePlayerMove(playerId, move);
+                    }
+                } catch (java.net.SocketTimeoutException e) {
+                    if (manager.isGameStarted()) {
+                        manager.handlePlayerMove(playerId, ""); // Jogada vazia no timeout
+                    }
                 }
             }
         } catch (IOException e) {
             System.out.println("Jogador " + playerId + " desconectou-se.");
         } finally {
+            manager.playerDisconnected(this);
             closeConnection();
         }
     }
