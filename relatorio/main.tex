@@ -23,7 +23,9 @@
   frame=single,
   breaklines=true,
   captionpos=b,
-  tabsize=4
+  tabsize=4,
+  aboveskip=1.5em,
+  belowskip=1.5em
 }
 
 \begin{document}
@@ -269,8 +271,104 @@ public synchronized void playerDisconnected(ClientHandler player) {
 }
 \end{lstlisting}
 
+\section{Pequenas Funcionalidades}
 
+\subsection{Contagem Regressiva Dinâmica em Consola (Códigos ANSI)}
+Uma das limitações técnicas inerentes às aplicações de consola que bloqueiam a \textit{thread} principal a aguardar a leitura do teclado (\texttt{scanner.nextLine()}) é a incapacidade de lidar com atualizações fluidas na interface. A tentativa de mostrar um relógio tradicional com contagem visível a descer obrigaria a que as letras ativamente digitadas pelo jogador fossem intercetadas ou engolidas.
 
+Para solucionar de forma elegante este desafio visual imposto, aplicámos uma abordagem assente em formatações de \textbf{ANSI escape sequences}.
+
+A lógica opera lançando uma \textit{Thread daemon} sempre que se exige uma jogada. A cada decréscimo intervalar atómico de um segundo, utilizam-se estas tags de controlo para manipular a janela (matriz Y) da seguinte forma:
+\begin{enumerate}
+    \item \texttt{\textbackslash033[s} guarda na memória da consola a posição exata das coordenadas em que o curso digitável se encontra suspenso, sem imprimir nada de novo.
+    \item \texttt{\textbackslash033[<N>A} movimenta temporariamente e verticalmente o indicador de ecrã para cima num espaço rígido correspondente a \textbf{N} linhas, ou seja, retrocedendo as linhas que desenharam o "Boneco" e restantes textos.
+    \item Chegando ao ponto calculado pelo algoritmo, sobrepõe toda a linha para uma nova que contém o cronómetro subtraído. Dispara adicionalmente um comando de limpeza limiar (\texttt{\textbackslash033[K}).
+    \item Imediatamente, e sem que a operação seja percetível à cadência de imagem dos píxeis normais, a tag de fecho \texttt{\textbackslash033[u} força a que o cursor seja reposicionado no fundo para que possa continuar ativamente a processar as teclas em ciclo de \textit{buffer} do \textit{Scanner}.
+\end{enumerate}
+
+Na porção técnica da classe de gráfica (\texttt{ConsoleUI.java}), todo este comportamento em background consome um núcleo temporal com a seguinte anatomia prototipada:
+
+\begin{lstlisting}[caption={Rotina Assíncrona de Input com Relógio ANSI em Segundo Plano}]
+public static String readGuess(Scanner scanner) {
+    waitingForInput = true;
+    
+    Thread timer = new Thread(() -> {
+        int time = 30; // 30 segundos (Tempo Limite)
+        while (waitingForInput && time > 0) {
+            try {
+                Thread.sleep(1000);
+                time--;
+                if (waitingForInput) {
+                    String timeStr = String.format("%02d", time);
+                    // \033[s guarda cursor, \033[A navega p/ Norte e reescreve 
+                    System.out.print("\033[s"); 
+                    System.out.print("\033[" + linesToMoveUp + "A");
+                    System.out.print("\r   RONDA " + currentRound + "   |    Tempo: " + timeStr + "s \033[K");
+                    System.out.print("\033[u"); // \033[u liberta cursor para o Sul
+                    System.out.flush();
+                }
+            } catch (InterruptedException e) { break; }
+        }
+    });
+    timer.setDaemon(true);
+    timer.start();
+
+    String result = null;
+    if (scanner.hasNextLine()) {
+        result = scanner.nextLine().trim();
+    }
+    
+    waitingForInput = false;
+    timer.interrupt();
+    return result;
+}
+\end{lstlisting}
+\subsection{Renderização Gráfica do Boneco}
+A representação visual do jogo é feita através do clássico boneco da forca. Como as consolas de texto não permitem gráficos avançados, foi utilizada \textit{Arte ASCII} para contornar essa limitação.
+
+A lógica de desenho baseia-se no número de erros acumulados pelos jogadores (ou seja, $6 - \textit{tentativas restantes}$). Dependendo desse valor, partes do boneco vão sendo mostradas.
+
+Para isso, são usadas condições (por exemplo, operadores ternários) que decidem quais caracteres devem aparecer, como a cabeça \texttt{'O'} ou os braços \texttt{'/'}. Caso o número de erros ainda não seja suficiente, esses elementos são substituídos por espaços em branco.
+
+O seguinte bloco na \texttt{ConsoleUI} demonstra este funcionamento:
+
+\begin{lstlisting}[caption={Rotina dinâmica de Renderização do Boneco em ASCII}]
+public static void drawHangman(int attemptsLeft) {
+    // Calcula as partes do boneco ativas
+    int errors = 6 - attemptsLeft;
+
+    String head = errors >= 1 ? "O" : " ";
+    String body = errors >= 2 ? "|" : " ";
+    String lArm = errors >= 3 ? "/" : " ";
+    String rArm = errors >= 4 ? "\\" : " ";
+    String lLeg = errors >= 5 ? "/" : " ";
+    String rLeg = errors >= 6 ? "\\" : " ";
+
+    System.out.println("  ┌───┐");
+    System.out.println("  │   " + head);
+    System.out.println("  │  " + lArm + body + rArm);
+    System.out.println("  │  " + lLeg + " " + rLeg);
+    System.out.println("  │");
+    System.out.println("──┴──");
+}
+\end{lstlisting}
+
+\subsection{Apresentação de Letras Tentadas Anteriormente}
+A gestão do rol de perspetivas utilizadas (o inventário de letras submetidas falhadas ou já preenchidas) reveste-se de grande utilidade para prevenir castigos acidentais na alocação de letras erróneas ativas, garantindo visibilidade total na área de jogo.
+
+Sob a ótica operacional distribuída da arquitetura implementada, os Clientes retêm o estado de forma leviana (\textit{Stateless}). Todas as lógicas analíticas sobre as letras são processadas em \textit{Cache} pelo sistema de controlo primário associado ao objeto \texttt{GameEngine} situado no Servidor Lógico e, em última instância, unificadas num vetor textual partilhado em rede pelo protocolo nativo \texttt{ROUND} e \texttt{STATE}. 
+Assim que o cliente processa e captura a carga iterativa empacotada no tráfego, o mesmo apenas projeta o resultado puramente cru, injetado submetido de inspeção pela camada visual, indicando primeiro a validade material na \textit{String} antes de desenhar a linha final com o respetivo limitador gráfico.
+
+No que toca também ao temporizador, a integração da matriz ANSI tem em conta à priori a dimensão final se este bloco de letreiros visuais for impresso:
+\begin{lstlisting}[caption={Sincronização passiva do Cliente com as Letras Usadas}]
+// Se o pacote de strings enviado pelo servidor não estiver em branco
+if (!usedLetters.isBlank()) {
+    System.out.println("  Letras usadas: " + usedLetters);
+    linesToMoveUp = 12; // Ajuste preventivo para a navegação ANSI
+}
+System.out.println(SEPARATOR);
+System.out.print("  A tua jogada (letra ou palavra completa): ");
+\end{lstlisting}
 
 \chapter{Conclusões e Trabalho Futuro}
 

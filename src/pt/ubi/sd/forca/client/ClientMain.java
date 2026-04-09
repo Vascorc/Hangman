@@ -8,7 +8,8 @@ import pt.ubi.sd.forca.shared.Config;
 
 /**
  * Ponto de entrada do cliente.
- * Responsável por pedir o IP ao utilizador, estabelecer a ligação TCP ao servidor
+ * Responsável por pedir o IP ao utilizador, estabelecer a ligação TCP ao
+ * servidor
  * e lançar a ServerListener (thread de escuta) e o loop de input do utilizador.
  */
 public class ClientMain {

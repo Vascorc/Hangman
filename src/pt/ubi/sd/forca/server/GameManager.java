@@ -52,7 +52,7 @@ public class GameManager {
 
     // Adiciona um jogador e verifica se o jogo pode começar
     public void addPlayer(ClientHandler player) {
-        synchronized(this) {
+        synchronized (this) {
             if (players.size() >= 4 || gameStarted) {
                 player.sendMessage(Protocol.FULL);
                 player.closeConnection();
@@ -120,9 +120,10 @@ public class GameManager {
 
     // Inicia uma nova ronda enviando o estado atual a todos
     public void nextRound() {
-        synchronized(this) {
+        synchronized (this) {
             currentRoundMoves.clear(); // Limpa as jogadas da ronda anterior
-            String state = Protocol.ROUND + " " + roundNumber + " " + engine.getMask() + " " + engine.getAttempts() + " " + engine.getUsedLetters();
+            String state = Protocol.ROUND + " " + roundNumber + " " + engine.getMask() + " " + engine.getAttempts()
+                    + " " + engine.getUsedLetters();
             roundNumber++;
             broadcast(state);
         }
@@ -130,8 +131,9 @@ public class GameManager {
 
     // Recebe a jogada de um jogador e verifica se todos já jogaram
     public void handlePlayerMove(int playerId, String move) {
-        synchronized(this) {
-            if (!gameStarted) return;
+        synchronized (this) {
+            if (!gameStarted)
+                return;
 
             // Aceita apenas a primeira jogada de cada utilizador na ronda
             if (!currentRoundMoves.containsKey(playerId)) {
@@ -151,11 +153,13 @@ public class GameManager {
     private void processEndOfRound() {
         List<String> winners = new ArrayList<>();
 
-        // Identificar os IDs vencedores (adivinhou a palavra ou acertou numa letra nova)
+        // Identificar os IDs vencedores (adivinhou a palavra ou acertou numa letra
+        // nova)
         for (Map.Entry<Integer, String> entry : currentRoundMoves.entrySet()) {
             int pId = entry.getKey();
             String m = entry.getValue().toUpperCase().trim();
-            if (m.isEmpty()) continue;
+            if (m.isEmpty())
+                continue;
 
             if (m.equals(engine.getTargetWord())) {
                 winners.add(String.valueOf(pId));
@@ -175,7 +179,8 @@ public class GameManager {
 
         // Verificar vitória ou derrota
         if (engine.isWin()) {
-            if (winners.isEmpty()) winners.add("Todos (Trabalho de Equipa!)");
+            if (winners.isEmpty())
+                winners.add("Todos (Trabalho de Equipa!)");
             broadcast(Protocol.END_WIN + " " + String.join(",", winners) + " " + engine.getTargetWord());
             stopGame();
         } else if (engine.getAttempts() <= 0) {

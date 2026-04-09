@@ -4,10 +4,10 @@ import java.util.Scanner;
 
 /**
  * Responsável por TODA a interação visual com o utilizador:
- *   - Desenhar o boneco da forca
- *   - Mostrar a máscara da palavra e letras usadas
- *   - Ler a jogada do teclado
- *   - Mostrar mensagens de início, vitória, derrota, etc.
+ * - Desenhar o boneco da forca
+ * - Mostrar a máscara da palavra e letras usadas
+ * - Ler a jogada do teclado
+ * - Mostrar mensagens de início, vitória, derrota, etc.
  *
  * Nenhum outro ficheiro deve ter System.out diretamente — centraliza aqui.
  */
@@ -16,7 +16,7 @@ public class ConsoleUI {
     // Menu de entrada
     public static int showMainMenu(Scanner scanner) {
         String option = "";
-        
+
         while (true) {
             System.out.println("\n" + "═".repeat(45));
             System.out.println("       🎮 JOGO DA FORCA MULTIJOGADOR 🎮       ");
@@ -62,19 +62,19 @@ public class ConsoleUI {
     /**
      * Desenha o boneco da forca com base no número de tentativas RESTANTES.
      * O jogo começa com 6 tentativas, então:
-     *   6 tentativas → boneco vazio
-     *   0 tentativas → boneco completo (perdeu)
+     * 6 tentativas → boneco vazio
+     * 0 tentativas → boneco completo (perdeu)
      */
     public static void drawHangman(int attemptsLeft) {
         // Calculamos quantas partes do boneco já foram "penduradas"
         int errors = 6 - attemptsLeft;
 
-        String head  = errors >= 1 ? "O" : " ";
-        String body  = errors >= 2 ? "|" : " ";
-        String lArm  = errors >= 3 ? "/" : " ";
-        String rArm  = errors >= 4 ? "\\" : " ";
-        String lLeg  = errors >= 5 ? "/" : " ";
-        String rLeg  = errors >= 6 ? "\\" : " ";
+        String head = errors >= 1 ? "O" : " ";
+        String body = errors >= 2 ? "|" : " ";
+        String lArm = errors >= 3 ? "/" : " ";
+        String rArm = errors >= 4 ? "\\" : " ";
+        String lLeg = errors >= 5 ? "/" : " ";
+        String rLeg = errors >= 6 ? "\\" : " ";
 
         System.out.println("  ┌───┐");
         System.out.println("  │   " + head);
@@ -109,16 +109,24 @@ public class ConsoleUI {
         System.out.println(SEPARATOR);
     }
 
+    private static int currentRound = 1;
+    private static int linesToMoveUp = 11;
+
     /** Mostrado ao receber ROUND <k> */
     public static void showRound(int round, String mask, int attempts, String usedLetters) {
+        currentRound = round;
+        
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  📍  RONDA " + round);
+        System.out.println("  📍  RONDA " + round + "   |   ⏳ Tempo: 30s");
         System.out.println(SEPARATOR);
         drawHangman(attempts);
         System.out.println("  Palavra: " + formatMask(mask));
         System.out.println("  Tentativas restantes: " + attempts);
+        
+        linesToMoveUp = 11;
         if (!usedLetters.isBlank()) {
             System.out.println("  Letras usadas: " + usedLetters);
+            linesToMoveUp = 12;
         }
         System.out.println(SEPARATOR);
         System.out.print("  A tua jogada (letra ou palavra completa): ");
@@ -188,15 +196,43 @@ public class ConsoleUI {
 
     // ─── Leitura de input ──────────────────────────────────────
 
-    /**
-     * Lê uma jogada do utilizador (letra ou palavra completa).
-     * Devolve null se o utilizador não escrever nada (timeout gerido pelo servidor).
-     */
+    private static volatile boolean waitingForInput = false;
+
     public static String readGuess(Scanner scanner) {
+        waitingForInput = true;
+        
+        Thread timer = new Thread(() -> {
+            int time = 30; // 30 segundos
+            while (waitingForInput && time > 0) {
+                try {
+                    Thread.sleep(1000);
+                    time--;
+                    if (waitingForInput) {
+                        String timeStr = String.format("%02d", time);
+                        // Guarda o cursor, sobe N linhas, reescreve a linha inteira da Ronda, desce/restaura o cursor
+                        System.out.print("\033[s"); // save cursor
+                        System.out.print("\033[" + linesToMoveUp + "A"); // move cursor up
+                        System.out.print("\r  📍  RONDA " + currentRound + "   |   ⏳ Tempo: " + timeStr + "s \033[K");
+                        System.out.print("\033[u"); // restore cursor
+                        System.out.flush();
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        timer.setDaemon(true);
+        timer.start();
+
+        String result = null;
         if (scanner.hasNextLine()) {
-            return scanner.nextLine().trim();
+            result = scanner.nextLine().trim();
         }
-        return null;
+        
+        waitingForInput = false;
+        timer.interrupt();
+        
+        return result;
     }
 
     // ─── Utilitários ───────────────────────────────────────────

@@ -1,4 +1,5 @@
 package pt.ubi.sd.forca.server;
+
 import java.io.*;
 import java.net.Socket;
 import pt.ubi.sd.forca.shared.Protocol;
@@ -6,7 +7,6 @@ import pt.ubi.sd.forca.shared.Protocol;
 /*
  * classe que estende Thread. Cada jogador terá a sua, lê o que o socket recebe e "pergunta" à lógica do jogo o que fazer.
  */
-
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -26,9 +26,13 @@ public class ClientHandler extends Thread {
         }
     }
 
-    public void setPlayerId(int id) { this.playerId = id; }
-    
-    public int getPlayerId() { return this.playerId; }
+    public void setPlayerId(int id) {
+        this.playerId = id;
+    }
+
+    public int getPlayerId() {
+        return this.playerId;
+    }
 
     @Override
     public void run() {
@@ -38,7 +42,8 @@ public class ClientHandler extends Thread {
             while (true) {
                 try {
                     String line = in.readLine();
-                    if (line == null) break; // Desconexão limpa
+                    if (line == null)
+                        break; // Desconexão limpa
                     if (line.startsWith(Protocol.GUESS)) {
                         String move = line.substring(6).trim(); // Remove "GUESS "
                         manager.handlePlayerMove(playerId, move);
@@ -58,10 +63,14 @@ public class ClientHandler extends Thread {
     }
 
     public void sendMessage(String msg) {
-        if (out != null) out.println(msg);
+        if (out != null)
+            out.println(msg);
     }
 
     public void closeConnection() {
-        try { socket.close(); } catch (IOException e) {}
+        try {
+            socket.close();
+        } catch (IOException e) {
+        }
     }
 }
