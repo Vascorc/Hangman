@@ -20,6 +20,17 @@ public class ClientMain {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
+     // Mostra o menu e guarda a escolha
+        int choice = ConsoleUI.showMainMenu(scanner);
+
+        if (choice == 0) {
+            scanner.close();
+            System.exit(0); // Termina o programa se o utilizador escolher sair
+        }
+
+        // Se escolheu 1, o código continua normalmente para pedir o IP
+        System.out.print("Endereço do servidor [" + Config.SERVER_IP + "]: ");
+        
         // Pedir IP ao utilizador (ou usar o padrão da Config)
         System.out.print("Endereço do servidor [" + Config.SERVER_IP + "]: ");
         String input = scanner.nextLine().trim();
@@ -65,4 +76,5 @@ public class ClientMain {
     public static void onGameEnd() {
         gameRunning = false;
     }
+
 }
