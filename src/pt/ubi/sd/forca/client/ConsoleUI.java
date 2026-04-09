@@ -12,6 +12,46 @@ import java.util.Scanner;
  * Nenhum outro ficheiro deve ter System.out diretamente — centraliza aqui.
  */
 public class ConsoleUI {
+	
+	// Menu de entrada
+	public static int showMainMenu(Scanner scanner) {
+        String option = "";
+        
+        while (true) {
+            System.out.println("\n" + "═".repeat(45));
+            System.out.println("       🎮 JOGO DA FORCA MULTIJOGADOR 🎮       ");
+            System.out.println("═".repeat(45));
+            System.out.println("  1. Ligar ao Servidor e Jogar");
+            System.out.println("  2. Ver Regras do Jogo");
+            System.out.println("  0. Sair");
+            System.out.println("═".repeat(45));
+            System.out.print("  Escolhe uma opção: ");
+
+            option = scanner.nextLine().trim();
+
+            switch (option) {
+                case "1":
+                    return 1; // Sai do menu e avança para o jogo
+                case "2":
+                    showRules(); // Mostra as regras e volta a desenhar o menu
+                    break;
+                case "0":
+                    System.out.println("  A sair... Obrigado por jogares!");
+                    return 0; // Código para terminar o programa
+                default:
+                    System.out.println("  ⚠️ Opção inválida! Tenta novamente.");
+            }
+        }
+    }
+
+    private static void showRules() {
+        System.out.println("\n--- REGRAS ---");
+        System.out.println("1. O jogo suporta até 4 jogadores.");
+        System.out.println("2. Têm 6 tentativas em conjunto para adivinhar a palavra.");
+        System.out.println("3. Podes tentar uma letra ou a palavra inteira.");
+        System.out.println("4. Demorar muito tempo na tua vez gasta uma tentativa!");
+        System.out.println("Pressiona [ENTER] para voltar ao menu...");
+    }
 
     // Largura da linha de separação para deixar o output mais legível
     private static final String SEPARATOR = "═".repeat(45);
@@ -127,21 +167,6 @@ public class ConsoleUI {
     public static void showFull() {
         System.out.println("\n" + SEPARATOR);
         System.out.println("  ⛔  Servidor cheio! Tenta mais tarde.");
-        System.out.println(SEPARATOR);
-    }
-
-    /** Mostrado ao receber PLAYER_LEFT (jogador desconectou-se a meio do jogo) */
-    public static void showPlayerLeft(int playerId) {
-        System.out.println("\n" + SEPARATOR);
-        System.out.println("  ❌  JOGO TERMINADO — Jogador " + playerId + " desconectou-se.");
-        System.out.println(SEPARATOR);
-    }
-
-    /** Mostrado ao receber CANCELLED (lobby cancelado por falta de jogadores) */
-    public static void showCancelled() {
-        System.out.println("\n" + SEPARATOR);
-        System.out.println("  ⏱  LOBBY CANCELADO — Jogadores insuficientes.");
-        System.out.println("  O jogo precisa de pelo menos 2 jogadores.");
         System.out.println(SEPARATOR);
     }
 
