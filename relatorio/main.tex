@@ -1,0 +1,190 @@
+\documentclass[11pt,a4paper,oneside]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, left=3cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\usepackage{lipsum}
+\usepackage{titlesec}
+\usepackage{setspace}
+
+\begin{document}
+
+% Capa
+\begin{titlepage}
+    \centering
+    {\scshape\LARGE Universidade da Beira Interior \par}
+    \vspace{0.5cm}
+    {\scshape\Large Departamento de Informática\par}
+    \vspace{1cm}
+    \includegraphics[width=0.4\textwidth]{logo_ubi.png}\par
+    \vspace{1.5cm}
+    {\huge\bfseries Jogo da Forca Multijogador\par}
+    \vspace{0.5cm}
+    {\Large Sistemas Distribuídos\par}
+    \vspace{2cm}
+    {\Large\itshape Elaborado por:\par}
+    Alexandre Santos (52011)\\
+    Daniel Carlos (52578)\\
+    Vasco Colaço (52290)\par
+    \vspace{2cm}
+    {\Large\itshape Unidade Curricular:\par}
+    Sistemas Distribuídos\par
+    \vfill
+    {\large \today\par}
+\end{titlepage}
+
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\chapter*{Acrónimos}
+\begin{description}
+    \item[TCP] Transmission Control Protocol
+    \item[IP] Internet Protocol
+    \item[UBI] Universidade da Beira Interior
+    \item[UDP] User Datagram Protocol
+\end{description}
+
+\chapter*{Glossário}
+\begin{description}
+    \item[Socket] Ponto final de uma ligação de comunicação bidirecional entre dois programas através de uma rede de dados.
+    \item[Thread] Linha de execução independente e secundária dentro de um processo principal, permitindo a concorrência computacional.
+\end{description}
+
+\chapter{Introdução}
+
+\section{Enquadramento}
+No âmbito prático de programação e implementação de sistemas de rede, foi proposta a construção de um sistema distribuído baseado na típica arquitetura cliente-servidor. O projeto selecionado consiste no desenvolvimento  do \textbf{Jogo da Forca Multijogador}, utilizando a linguagem de programação Java e a comunicação de dados bidirecional assente em \textit{sockets} TCP.
+
+Este tipo de arquitetura é utilizada em aplicações da atualidade, que requerem comunicação extremamente fiável e trocas de dados em tempo real.
+
+
+\section{Objetivos}
+O objetivo principal desta proposta é criar um servidor resistente que coordene várias partidas do Jogo da Forca ao mesmo tempo, permitindo que vários jogadores participem em simultâneo. Também pretende organizar melhor a comunicação com os clientes e tornar a interface do utilizador mais clara e interativa.
+
+Estes são os principais objetivos do programa:
+\begin{enumerate}
+    \item Criar a base do sistema Cliente-Servidor usando \textit{sockets} (ServerSocket e Socket em Java).  (\texttt{java.net.ServerSocket} e \texttt{java.net.Socket}).
+    \item Permitir várias ligações ao mesmo tempo (entre 2 a 4 jogadores), com início automático do jogo após algum tempo de espera no lobby.
+    \item Definir um protocolo de comunicação simples, baseado em mensagens de texto trocadas entre cliente e servidor.
+    \item Garantir que as rondas decorrem corretamente, com tempo limite para cada jogada (\textit{timeout}), e atualizar o estado do jogo (palavra escolhida aleatoriamente de uma lista de 100).
+    \item Evitar erros e conflitos no jogo, assegurando que a gestão das vidas e das jogadas é feita de forma segura e organizada.
+\end{enumerate}
+
+\section{Organização do Documento}
+Para descrever melhor os procedimentos, este documento está organizado nas seguintes secções:
+\begin{itemize}
+    \item \textbf{Capítulo 1 -- Introdução} -- apresenta de forma geral o tema e os objetivos do programa.
+    \item \textbf{Capítulo 2 -- Tecnologias e Ferramentas Utilizadas} -- descreve as necessidades do projeto e as ferramentas usadas para o desenvolver.
+    \item \textbf{Capítulo 3 -- Implementação e Testes} -- explica como o servidor foi desenvolvido e como funciona o jogo em modo multijogador.
+    \item \textbf{Capítulo 4 -- Conclusões e Trabalho Futuro} -- resume o trabalho realizado e apresenta possíveis melhorias para o futuro.
+\end{itemize}
+
+
+\chapter{Tecnologias e Ferramentas Utilizadas}
+\section{Introdução}
+O desenvolvimento deste projeto multijogador distribuído baseou-se na escolha de um conjunto adequado de ferramentas que garantissem o funcionamento consistente entre diferentes ambientes. De seguida, são apresentados os principais elementos técnicos utilizados.
+
+\section{Ecosistema e Alojamento (Java)}
+O projeto foi desenvolvido em \textbf{Java}, devido à sua portabilidade e estabilidade. A linguagem permite executar o mesmo código em diferentes sistemas sem grandes alterações. As bibliotecas nativas de entrada e saída (I/O) facilitam a comunicação entre a rede e a consola.
+
+\section{Paralelismo Assíncrono}
+Para lidar com vários jogadores ao mesmo tempo e evitar bloqueios durante a comunicação, foram utilizadas \textit{threads}. Cada ligação é tratada de forma independente, permitindo que o servidor continue a funcionar e a aceitar novas conexões sem interrupções.
+
+\section{A Garantia TCP/IP}
+De forma a garantir que as mensagens entre jogadores e servidor chegam corretamente e na ordem certa, foi utilizado o protocolo TCP. Este assegura uma comunicação fiável durante o jogo.
+\chapter{Implementação e Testes}
+
+\section{Introdução}
+Esta secção descreve as principais decisões de arquitetura e explica como o sistema foi desenvolvido para permitir o funcionamento do jogo em rede.
+
+\section{Estruturação Arbórea do Código de Fonte}
+Para organizar melhor o código e manter uma boa estrutura, o projeto foi dividido em três partes principais, cada uma com a sua função:
+\begin{description}
+    \item[\textit{pt.ubi.sd.forca.shared} (Repositório Comum)] Contém elementos partilhados entre cliente e servidor, como constantes, definições do protocolo e estruturas necessárias para a comunicação.
+    \item[\textit{pt.ubi.sd.forca.server} (Servidor)] Responsável por gerir as ligações dos jogadores, coordenar o jogo e controlar a lógica principal, como palavras, pontuação e regras das rondas.
+    \item[\textit{pt.ubi.sd.forca.client} (Cliente)] Responsável pela interação com o utilizador, mostrando informação no ecrã e enviando comandos para o servidor.
+\end{description}
+
+\section{Core Lógico (GameEngine e Sincronismo)}
+A lógica principal do jogo é controlada por um componente chamado \textit{GameManager}, criado pelo servidor, que escolhe aleatoriamente uma palavra a partir de uma lista pré-definida com 100 opções. 
+A sessão começa por aceitar ligações de jogadores, iniciando o jogo quando há pelo menos 2 participantes após um \textit{timeout} no lobby, ou imediatamente quando se atinge o máximo de 4 jogadores. Depois do jogo começar, novos jogadores são recusados através da mensagem \texttt{FULL} e obrigados a desligar.
+
+Durante o jogo, gerido pelo \textit{GameEngine}, a jogabilidade decorre em rondas síncronas. O estado do jogo é partilhado com todos os participantes. Em cada ronda, é iniciado um cronómetro para que os jogadores submetam uma letra única ou tentem adivinhar a palavra, sendo as respostas avaliadas sem distinção entre maiúsculas e minúsculas. Respostas fora do tempo limite são penalizadas, sendo consideradas como uma submissão de texto vazio (``'').
+
+Após todas as respostas serem recebidas, o sistema verifica os acertos, reduz o número de tentativas falhadas até um máximo definido (por exemplo, 6), e determina o fim do jogo quando a palavra é descoberta ou quando se esgotam as tentativas.
+
+
+
+\section{O Protocolo Lexical}
+
+A comunicação entre Servidor e Cliente baseia-se em mensagens de texto, onde cada comando ocupa uma linha completa terminada por um \textit{line break}. 
+
+\subsection{Mensagens Servidor $\rightarrow$ Cliente}
+O Servidor envia comandos essenciais para controlar o jogo e informar os Clientes:
+
+\begin{itemize}
+    \item \texttt{WELCOME <id> <total>} – Cumprimento inicial, atribuindo a posição de cada jogador na sessão.
+    \item \texttt{START <mask> <attempts> <timeout>} – Indica o início do jogo, enviando as regras e restrições da partida.
+    \item \texttt{ROUND <k> <mask> <attempts> <used>} – Informa sobre o novo ciclo e o estado atual.
+    \item \texttt{STATE <mask> <attempts> <used>} – Atualização do estado do jogo para sincronização.
+    \item \texttt{END WIN <winners> <word>} – Finaliza a partida indicando os vencedores e a palavra correta.
+    \item \texttt{END LOSE <word>} – Finaliza a partida informando a palavra correta quando todos falharam.
+    \item \texttt{FULL} – Rejeita jogadores que tentam entrar após a partida começar.
+    \item \texttt{CANCELLED} – Notifica que o lobby foi cancelado por falta de jogadores.
+    \item \texttt{PLAYER\_LEFT <id>} – Indica que um jogador se desconectou durante a partida.
+\end{itemize}
+
+\subsection{Mensagens Cliente $\rightarrow$ Servidor}
+O Cliente envia apenas requisições ativas, como:
+
+\begin{itemize}
+    \item \texttt{GUESS <text>} – Submissão de uma letra ou da palavra completa.
+\end{itemize}
+
+\section{Sincronização e Exclusão Mútua}
+Para garantir a integridade dos dados, foi utilizado o mecanismo de \textit{monitor} do Java através da palavra-chave \texttt{synchronized(this)}. Isto permitiu definir secções críticas no \textit{GameManager}, assegurando que, por exemplo, dois jogadores não conseguem ser adicionados à mesma posição da lista simultaneamente ou que o processamento do fim da ronda só ocorre após a receção de todas as jogadas.
+
+\section{Diagrama de Sequência (Arquitetura)}
+Menciona como as mensagens fluem. Podes descrever o ciclo de vida:
+
+Cliente liga-se -> Recebe WELCOME.
+
+Lobby atinge limite -> Todos recebem START.
+
+Ciclo de Ronda -> ROUND -> GUESS -> STATE.
+
+C. Tratamento de Erros e Tolerância a Falhas
+
+
+
+
+\section{Tratamento de Erros e Tolerância a Falhas}
+O servidor foi desenhado para ser capaz de resistir a desconexões inesperadas. Caso um \textit{socket} seja fechado abruptamente, a \textit{thread} dedicada a esse cliente deteta a \textit{IOException}, encerra os recursos localmente e o \textit{GameManager} é notificado para remover o jogador da sessão ativa ou declarar a sua desistência.
+
+
+
+
+\chapter{Conclusões e Trabalho Futuro}
+
+\section{Conclusão}
+O desenvolvimento deste projeto permitiu consolidar os conhecimentos sobre comunicação em rede utilizando Sockets TCP e a gestão de concorrência em Java. A arquitetura cliente-servidor implementada mostrou-se robusta para o número de jogadores definido, garantindo que o protocolo de texto é seguido de forma rigorosa e síncrona. A separação de responsabilidades entre o motor de jogo e a gestão de comunicações facilitou a manutenção e o teste do sistema.
+
+\section{Trabalho Futuro}
+Para versões futuras deste sistema, poderiam ser implementadas as seguintes melhorias:
+\begin{itemize}
+    \item \textbf{Interface Gráfica (GUI):} Substituir a consola por uma interface JavaFX para uma melhor experiência de utilizador.
+    \item \textbf{Persistência de Dados:} Implementar uma base de dados para guardar um histórico de vitórias e recordes dos jogadores.
+\end{itemize}
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{bibliografia}
+
+\end{document}
