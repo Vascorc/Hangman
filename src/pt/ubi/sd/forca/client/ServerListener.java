@@ -6,7 +6,7 @@ import java.io.*;
  * Thread que corre em background e ouve continuamente as mensagens enviadas
  * pelo servidor.
  * Trata todas as mensagens do protocolo definido:
- * WELCOME, START, ROUND, STATE, END WIN, END LOSE, FULL
+ * WELCOME, START, ROUND, STATE, END WIN, END LOSE, FULL, CANCELLED
  *
  * Quando é a vez do jogador, acende a flag myTurn para que o ClientMain
  * passe a aceitar input do teclado.
@@ -16,6 +16,7 @@ public class ServerListener extends Thread {
     private final BufferedReader in;
     private final Runnable onGameEnd; // Callback para avisar o ClientMain que o jogo acabou
     private volatile boolean myTurn = false; // Flag que controla quando o jogador pode jogar
+    private volatile boolean gameEnded = false; // Garante que onGameEnd é chamado apenas uma vez
 
     private int myId = -1; // ID atribuído pelo servidor no WELCOME
 
@@ -36,7 +37,7 @@ public class ServerListener extends Thread {
             // Ligação fechada pelo servidor — comportamento normal no fim do jogo
             System.out.println("\n[INFO] Ligação ao servidor encerrada.");
         } finally {
-            onGameEnd.run();
+            notifyGameEnd();
         }
     }
 
@@ -50,6 +51,7 @@ public class ServerListener extends Thread {
      * END WIN <winner_ids> <word>
      * END LOSE <word>
      * FULL
+     * CANCELLED
      */
     private void handleMessage(String message) {
         if (message.startsWith("WELCOME")) {
@@ -77,8 +79,9 @@ public class ServerListener extends Thread {
             String usedLetters = parts.length > 4 ? parts[4] : "";
             ConsoleUI.showRound(round, mask, attempts, usedLetters);
             myTurn = true;
+
         } else if (message.startsWith("STATE")) {
-            // Ex: "STATE __S____ 5 AS" — atualização intermédia (opcional)
+            // Ex: "STATE __S____ 5 AS" — atualização intermédia
             String[] parts = message.split(" ", 4);
             String mask = parts[1];
             int attempts = Integer.parseInt(parts[2]);
@@ -88,26 +91,45 @@ public class ServerListener extends Thread {
         } else if (message.startsWith("END WIN")) {
             // Ex: "END WIN 0,1 SISTEMAS"
             String rest = message.substring("END WIN".length()).trim();
-            // O último token é a palavra; o resto são os IDs dos vencedores
             int lastSpace = rest.lastIndexOf(' ');
             String winners = lastSpace >= 0 ? rest.substring(0, lastSpace) : rest;
             String word = lastSpace >= 0 ? rest.substring(lastSpace + 1) : "?";
+            myTurn = false;
             ConsoleUI.showWin(winners, word, myId);
-            onGameEnd.run();
+            notifyGameEnd();
 
         } else if (message.startsWith("END LOSE")) {
             // Ex: "END LOSE SISTEMAS"
             String word = message.substring("END LOSE".length()).trim();
+            myTurn = false;
             ConsoleUI.showLose(word);
-            onGameEnd.run();
+            notifyGameEnd();
 
         } else if (message.equals("FULL")) {
             ConsoleUI.showFull();
-            onGameEnd.run();
+            notifyGameEnd();
+
+        } else if (message.equals("CANCELLED")) {
+            ConsoleUI.showCancelled();
+            notifyGameEnd();
+
+        } else if (message.startsWith("PLAYER_LEFT")) {
+            String[] parts = message.split(" ");
+            int leftId = Integer.parseInt(parts[1]);
+            ConsoleUI.showPlayerLeft(leftId);
+            notifyGameEnd();
 
         } else {
             // Mensagem desconhecida — mostra para debug
             System.out.println("[SERVIDOR] " + message);
+        }
+    }
+
+    /** Garante que onGameEnd é chamado apenas uma vez */
+    private void notifyGameEnd() {
+        if (!gameEnded) {
+            gameEnded = true;
+            onGameEnd.run();
         }
     }
 
