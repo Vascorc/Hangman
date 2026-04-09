@@ -9,6 +9,22 @@
 \usepackage{lipsum}
 \usepackage{titlesec}
 \usepackage{setspace}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstset{
+  language=Java,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue}\bfseries,
+  stringstyle=\color{red},
+  commentstyle=\color{black!60}\itshape,
+  showstringspaces=false,
+  frame=single,
+  breaklines=true,
+  captionpos=b,
+  tabsize=4
+}
 
 \begin{document}
 
@@ -39,7 +55,6 @@
 
 \tableofcontents
 \listoffigures
-\listoftables
 
 \chapter*{Acrónimos}
 \begin{description}
@@ -68,7 +83,7 @@ O objetivo principal desta proposta é criar um servidor resistente que coordene
 
 Estes são os principais objetivos do programa:
 \begin{enumerate}
-    \item Criar a base do sistema Cliente-Servidor usando \textit{sockets} (ServerSocket e Socket em Java).  (\texttt{java.net.ServerSocket} e \texttt{java.net.Socket}).
+    \item Criar a base do sistema Cliente-Servidor usando \textit{sockets} (ServerSocket e Socket em Java). 
     \item Permitir várias ligações ao mesmo tempo (entre 2 a 4 jogadores), com início automático do jogo após algum tempo de espera no lobby.
     \item Definir um protocolo de comunicação simples, baseado em mensagens de texto trocadas entre cliente e servidor.
     \item Garantir que as rondas decorrem corretamente, com tempo limite para cada jogada (\textit{timeout}), e atualizar o estado do jogo (palavra escolhida aleatoriamente de uma lista de 100).
@@ -87,10 +102,8 @@ Para descrever melhor os procedimentos, este documento está organizado nas segu
 
 \chapter{Tecnologias e Ferramentas Utilizadas}
 \section{Introdução}
-O desenvolvimento deste projeto multijogador distribuído baseou-se na escolha de um conjunto adequado de ferramentas que garantissem o funcionamento consistente entre diferentes ambientes. De seguida, são apresentados os principais elementos técnicos utilizados.
+O desenvolvimento deste projeto multijogador distribuído, desenvolvido em \textbf{Java}, baseou-se na escolha de um conjunto adequado de ferramentas que garantissem o funcionamento consistente entre diferentes ambientes. De seguida, são apresentados os principais elementos técnicos utilizados.
 
-\section{Ecosistema e Alojamento (Java)}
-O projeto foi desenvolvido em \textbf{Java}, devido à sua portabilidade e estabilidade. A linguagem permite executar o mesmo código em diferentes sistemas sem grandes alterações. As bibliotecas nativas de entrada e saída (I/O) facilitam a comunicação entre a rede e a consola.
 
 \section{Paralelismo Assíncrono}
 Para lidar com vários jogadores ao mesmo tempo e evitar bloqueios durante a comunicação, foram utilizadas \textit{threads}. Cada ligação é tratada de forma independente, permitindo que o servidor continue a funcionar e a aceitar novas conexões sem interrupções.
@@ -117,6 +130,25 @@ A sessão começa por aceitar ligações de jogadores, iniciando o jogo quando h
 Durante o jogo, gerido pelo \textit{GameEngine}, a jogabilidade decorre em rondas síncronas. O estado do jogo é partilhado com todos os participantes. Em cada ronda, é iniciado um cronómetro para que os jogadores submetam uma letra única ou tentem adivinhar a palavra, sendo as respostas avaliadas sem distinção entre maiúsculas e minúsculas. Respostas fora do tempo limite são penalizadas, sendo consideradas como uma submissão de texto vazio (``'').
 
 Após todas as respostas serem recebidas, o sistema verifica os acertos, reduz o número de tentativas falhadas até um máximo definido (por exemplo, 6), e determina o fim do jogo quando a palavra é descoberta ou quando se esgotam as tentativas.
+
+Para ilustrar o processamento de uma tentativa, o seguinte bloco de código demonstra como o motor de jogo (\textit{GameEngine}) analisa tanto caracteres individuais como tentativas completas de descobrir a palavra, reduzindo as vidas em caso de falha:
+
+\begin{lstlisting}[caption={Processamento de palpites na classe GameEngine}]
+public boolean processGuess(String guess) {
+    guess = guess.toUpperCase();
+    if (guess.length() == 1) {
+        char letter = guess.charAt(0);
+        usedLetters.add(letter);
+        if (targetWord.indexOf(letter) >= 0) return true;
+    } else if (guess.equals(targetWord)) {
+        // Acertou a palavra toda
+        for (char c : targetWord.toCharArray()) usedLetters.add(c);
+        return true;
+    }
+    attempts--;
+    return false;
+}
+\end{lstlisting}
 
 
 
@@ -149,22 +181,93 @@ O Cliente envia apenas requisições ativas, como:
 \section{Sincronização e Exclusão Mútua}
 Para garantir a integridade dos dados, foi utilizado o mecanismo de \textit{monitor} do Java através da palavra-chave \texttt{synchronized(this)}. Isto permitiu definir secções críticas no \textit{GameManager}, assegurando que, por exemplo, dois jogadores não conseguem ser adicionados à mesma posição da lista simultaneamente ou que o processamento do fim da ronda só ocorre após a receção de todas as jogadas.
 
-\section{Diagrama de Sequência (Arquitetura)}
-Menciona como as mensagens fluem. Podes descrever o ciclo de vida:
+O trecho de código abaixo demonstra a aplicação do \texttt{synchronized(this)} na adição de jogadores, na classe \textit{GameManager}, avaliando e atualizando a capacidade de rede de forma totalmente atómica face a pedidos paralelos:
 
-Cliente liga-se -> Recebe WELCOME.
+\begin{lstlisting}[caption={Exclusão Mútua ao adicionar jogadores}]
+public void addPlayer(ClientHandler player) {
+    synchronized(this) {
+        if (players.size() >= 4 || gameStarted) {
+            player.sendMessage(Protocol.FULL);
+            player.closeConnection();
+            return;
+        }
 
-Lobby atinge limite -> Todos recebem START.
+        players.add(player);
+        int id = players.size() - 1;
+        player.setPlayerId(id);
 
-Ciclo de Ronda -> ROUND -> GUESS -> STATE.
+        player.sendMessage(Protocol.WELCOME + " " + id + " " + players.size());
+        checkLobbyStatus();
+    }
+}
+\end{lstlisting}
 
-C. Tratamento de Erros e Tolerância a Falhas
+\section{Diagrama de Sequência}
+O diagrama seguinte representa o fluxo principal de mensagens do protocolo, demonstrando o ciclo de vida de uma partida, desde a ligação inicial de um cliente até ao desfecho final do jogo.
 
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[>=stealth, thick]
 
+        % Atores
+        \node[draw, rectangle, minimum width=2.5cm, minimum height=0.8cm] (cliente) at (0,0) {\textbf{Cliente}};
+        \node[draw, rectangle, minimum width=2.5cm, minimum height=0.8cm] (servidor) at (7,0) {\textbf{Servidor}};
 
+        % Linhas de vida
+        \draw[dashed] (cliente.south) -- +(0,-10.5);
+        \draw[dashed] (servidor.south) -- +(0,-10.5);
+
+        % 1. Ligar
+        \draw[->] (0,-1) -- node[midway, above=1mm, font=\small] {Estabelece Ligação (Socket TCP)} (7,-1);
+        % 2. Welcome
+        \draw[<-] (0,-2) -- node[midway, above=1mm, font=\small] {\texttt{WELCOME <id> <total>}} (7,-2);
+
+        % Notas Lobby
+        \node[draw, text width=4cm, align=center, fill=gray!10, rounded corners, font=\footnotesize] at (3.5, -3.2) {Aguardar pelo decorrer do temporizador ou limite do Lobby};
+
+        % 3. Start
+        \draw[<-] (0,-4.5) -- node[midway, above=1mm, font=\small] {\texttt{START <mask> <attempts> <timeout>}} (7,-4.5);
+
+        % Loop box
+        \draw[gray, thick, dashed] (-2.2,-5.3) rectangle (8.2, -8.3);
+        \node[font=\footnotesize\bfseries, anchor=north west] at (-2.2,-5.3) {Ciclo Múltiplo (Enquanto há tentativas e a máscara contém '\_')};
+
+        % 4. Round
+        \draw[<-] (0,-6.3) -- node[midway, above=1mm, font=\small] {\texttt{ROUND <k> <mask> <attempts> <used>}} (7,-6.3);
+        % 5. Guess
+        \draw[->] (0,-7.5) -- node[midway, above=1mm, font=\small] {\texttt{GUESS <letra\_ou\_palavra>}} (7,-7.5);
+
+        % 6. Fim do Jogo
+        \draw[<-] (0,-9.5) -- node[midway, above=1mm, font=\small] {\texttt{END WIN / END LOSE}} (7,-9.5);
+
+    \end{tikzpicture}
+    \caption{Ciclo de Mensagens Típico entre um Cliente e o Servidor}
+    \label{fig:diagrama_sequencia}
+\end{figure}
+
+\clearpage
 
 \section{Tratamento de Erros e Tolerância a Falhas}
 O servidor foi desenhado para ser capaz de resistir a desconexões inesperadas. Caso um \textit{socket} seja fechado abruptamente, a \textit{thread} dedicada a esse cliente deteta a \textit{IOException}, encerra os recursos localmente e o \textit{GameManager} é notificado para remover o jogador da sessão ativa ou declarar a sua desistência.
+
+Este comportamento foi implementado na função \texttt{playerDisconnected}, acionada de forma assíncrona assim que falhas de rede são apanhadas e processadas:
+
+\begin{lstlisting}[caption={Tratamento de desconexões do servidor para com os jogadores}]
+public synchronized void playerDisconnected(ClientHandler player) {
+    players.remove(player);
+    if (gameStarted) {
+        // Avisa os restantes que um jogador saiu e termina o jogo
+        broadcast(Protocol.PLAYER_LEFT + " " + player.getPlayerId());
+        stopGame();
+    } else if (players.isEmpty()) {
+        // Cancela o timer do lobby se não houver mais jogadores para garantir poupança do CPU
+        if (lobbyTimer != null) {
+            lobbyTimer.cancel();
+            lobbyTimer = null;
+        }
+    }
+}
+\end{lstlisting}
 
 
 
@@ -183,7 +286,7 @@ Para versões futuras deste sistema, poderiam ser implementadas as seguintes mel
 
 
 
-
+\nocite{*} 
 \bibliographystyle{plain}
 \bibliography{bibliografia}
 
