@@ -175,7 +175,7 @@ public class GameManager {
 
         // Verificar vitória ou derrota
         if (engine.isWin()) {
-            if (winners.isEmpty()) winners.add("Nenhum");
+            if (winners.isEmpty()) winners.add("Todos (Trabalho de Equipa!)");
             broadcast(Protocol.END_WIN + " " + String.join(",", winners) + " " + engine.getTargetWord());
             stopGame();
         } else if (engine.getAttempts() <= 0) {

@@ -55,5 +55,6 @@ public class GameEngine {
     public int getAttempts() { return attempts; }
     public String getUsedLetters() { return usedLetters.toString().replaceAll("[\\[\\], ]", ""); }
     public String getTargetWord() { return targetWord; }
+    public boolean isLetterUsed(char c) { return usedLetters.contains(c); }
     public boolean isWin() { return getMask().equals(targetWord); }
 }
