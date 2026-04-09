@@ -130,6 +130,21 @@ public class ConsoleUI {
         System.out.println(SEPARATOR);
     }
 
+    /** Mostrado ao receber PLAYER_LEFT (jogador desconectou-se a meio do jogo) */
+    public static void showPlayerLeft(int playerId) {
+        System.out.println("\n" + SEPARATOR);
+        System.out.println("  ❌  JOGO TERMINADO — Jogador " + playerId + " desconectou-se.");
+        System.out.println(SEPARATOR);
+    }
+
+    /** Mostrado ao receber CANCELLED (lobby cancelado por falta de jogadores) */
+    public static void showCancelled() {
+        System.out.println("\n" + SEPARATOR);
+        System.out.println("  ⏱  LOBBY CANCELADO — Jogadores insuficientes.");
+        System.out.println("  O jogo precisa de pelo menos 2 jogadores.");
+        System.out.println(SEPARATOR);
+    }
+
     // ─── Leitura de input ──────────────────────────────────────
 
     /**

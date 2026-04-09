@@ -16,6 +16,12 @@ public class Protocol {
     public static final String FULL     = "FULL";        // Servidor cheio
 
     // Mensagens enviadas pelo Cliente -> Servidor
-    public static final String GUESS   = "GUESS";        // GUESS <text>
-    
+    public static final String GUESS      = "GUESS";       // GUESS <text>
+
+    // Mensagem especial de cancelamento de lobby
+    public static final String CANCELLED  = "CANCELLED";   // Lobby cancelado por falta de jogadores
+
+    // Jogador desconectou-se a meio do jogo
+    public static final String PLAYER_LEFT = "PLAYER_LEFT"; // PLAYER_LEFT <id>
+
 }
