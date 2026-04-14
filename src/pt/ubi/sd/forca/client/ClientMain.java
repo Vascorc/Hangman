@@ -30,7 +30,8 @@ public class ClientMain {
         }
 
         // Se escolheu 1, o código continua normalmente para pedir o IP
-        System.out.print("Endereço do servidor [" + Config.SERVER_IP + "]: ");
+        System.out.println("  💡 Caso queira jogar localmente apenas aperte ENTER");
+        System.out.print("  Endereço do servidor: ");
         String input = scanner.nextLine().trim();
         String serverIP = input.isEmpty() ? Config.SERVER_IP : input;
 
