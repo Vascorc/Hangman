@@ -111,7 +111,7 @@ Para lidar com vários jogadores ao mesmo tempo e evitar bloqueios durante a com
 
 \section{A Garantia TCP/IP}
 De forma a garantir que as mensagens entre jogadores e servidor chegam corretamente e na ordem certa, foi utilizado o protocolo TCP. Este assegura uma comunicação fiável durante o jogo.
-\chapter{Implementação e Testes}
+\chapter{Implementação}
 
 \section{Introdução}
 Esta secção descreve as principais decisões de arquitetura e explica como o sistema foi desenvolvido para permitir o funcionamento do jogo em rede.
@@ -162,7 +162,8 @@ O Servidor envia comandos essenciais para controlar o jogo e informar os Cliente
 
 \begin{itemize}
     \item \texttt{WELCOME <id> <total>} – Cumprimento inicial, atribuindo a posição de cada jogador na sessão.
-    \item \texttt{START <mask> <attempts> <timeout>} – Indica o início do jogo, enviando as regras e restrições da partida.
+    \item \texttt{LOBBY\_UPDATE <total> <time>} – Notifica os jogadores no lobby do estado da sala (número de conexões) e decorrer do temporizador até iniciar o jogo.
+    \item \texttt{START <mask> <attempts> <timeout>} – Indica o início do jogo, despachando as regras da partida (como as tentativas máximas calculadas em grupo).
     \item \texttt{ROUND <k> <mask> <attempts> <used>} – Informa sobre o novo ciclo e o estado atual.
     \item \texttt{STATE <mask> <attempts> <used>} – Atualização do estado do jogo para sincronização.
     \item \texttt{END WIN <winners> <word>} – Finaliza a partida indicando os vencedores e a palavra correta.
@@ -322,6 +323,9 @@ public static String readGuess(Scanner scanner) {
     return result;
 }
 \end{lstlisting}
+
+Devido à melhoria visual proporcionada por este mecanismo durante o decorrer das rondas, a mesma ideia foi aplicada à contagem regressiva na fase inicial (\textbf{Lobby}). Assim, em vez de o terminal mostrar repetidamente mensagens como "Aguardar jogadores..." sempre que o tempo diminui ou entra um novo jogador, toda a informação é atualizada no mesmo local de forma assíncrona, reagindo a mensagens de rede do tipo \texttt{LOBBY\_UPDATE}.
+
 \subsection{Renderização Gráfica do Boneco}
 A representação visual do jogo é feita através do clássico boneco da forca. Como as consolas de texto não permitem gráficos avançados, foi utilizada \textit{Arte ASCII} para contornar essa limitação.
 
@@ -333,15 +337,15 @@ O seguinte bloco na \texttt{ConsoleUI} demonstra este funcionamento:
 
 \begin{lstlisting}[caption={Rotina dinâmica de Renderização do Boneco em ASCII}]
 public static void drawHangman(int attemptsLeft) {
-    // Calcula as partes do boneco ativas
-    int errors = 6 - attemptsLeft;
+    // Reduzimos as partes penduradas proporcionalmente a 6 fases
+    int erroCount = 6 - (int) Math.ceil((double) attemptsLeft * 6 / Math.max(maxAttempts, 1));
 
-    String head = errors >= 1 ? "O" : " ";
-    String body = errors >= 2 ? "|" : " ";
-    String lArm = errors >= 3 ? "/" : " ";
-    String rArm = errors >= 4 ? "\\" : " ";
-    String lLeg = errors >= 5 ? "/" : " ";
-    String rLeg = errors >= 6 ? "\\" : " ";
+    String head = erroCount >= 1 ? "O" : " ";
+    String body = erroCount >= 2 ? "|" : " ";
+    String lArm = erroCount >= 3 ? "/" : " ";
+    String rArm = erroCount >= 4 ? "\\" : " ";
+    String lLeg = erroCount >= 5 ? "/" : " ";
+    String rLeg = erroCount >= 6 ? "\\" : " ";
 
     System.out.println("  ┌───┐");
     System.out.println("  │   " + head);
@@ -368,6 +372,36 @@ if (!usedLetters.isBlank()) {
 System.out.println(SEPARATOR);
 System.out.print("  A tua jogada (letra ou palavra completa): ");
 \end{lstlisting}
+
+
+\chapter{Testes e Validação do Sistema}
+Para garantir a robustez da aplicação, foram realizados testes de stress e de comportamento em condições adversas, focando-se na experiência do utilizador e na estabilidade do servidor.
+
+\section{Gestão de Lotação (Servidor Cheio)}
+Um dos requisitos críticos é o controlo de acesso. O servidor limita o número máximo de jogadores a 4 ou impede a entrada após o início da partida. Quando um quinto jogador tenta conectar-se, o sistema envia a mensagem de protocolo \texttt{FULL} e encerra a conexão do lado do cliente de forma graciosa. 
+
+Como demonstrado na Figura \ref{fig:servidor_cheio}, o cliente apresenta uma mensagem informativa, garantindo que o utilizador compreende a razão da recusa.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{servidor_cheio.png}
+    \caption{Interface do Cliente ao tentar entrar num lobby já completo ou em jogo.}
+    \label{fig:servidor_cheio}
+\end{figure}
+
+\section{Resiliência a Falhas de Rede (Desconexão)}
+O sistema foi testado quanto à sua capacidade de detetar quedas de ligação. Se um jogador fechar o terminal ou perder a conexão à rede, o servidor deteta a interrupção da \textit{stream} de dados. 
+
+Como ilustrado na Figura \ref{fig:desconectou}, o sistema notifica os restantes utilizadores (através do comando \texttt{PLAYER\_LEFT}) e, dependendo do estado, encerra a partida para evitar que o motor de jogo fique bloqueado a aguardar um \textit{input} que nunca chegará.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{desconectou.png}
+    \caption{Notificação visual de desconexão inesperada de um dos participantes.}
+    \label{fig:desconectou}
+\end{figure}
+
+\clearpage
 
 \chapter{Conclusões e Trabalho Futuro}
 

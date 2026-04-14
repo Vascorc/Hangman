@@ -8,6 +8,7 @@ public class GameEngine {
     private String targetWord;
     private Set<Character> usedLetters;
     private int attempts;
+    private int maxAttempts;
     private String[] wordBank = {
         "SISTEMAS", "DISTRIBUIDOS", "JAVA", "SOCKET", "UBI", "COVILHA", "PROGRAMACAO", "COMPUTADOR", "INTERNET", "SERVIDOR",
         "CLIENTE", "PROTOCOLO", "REDE", "MENSAGEM", "LIGACAO", "CONCORRENCIA", "DADOS", "ARQUITETURA", "SISTEMA", "SOFTWARE",
@@ -26,6 +27,12 @@ public class GameEngine {
         this.targetWord = wordBank[(int) (Math.random() * wordBank.length)].toUpperCase();
         this.usedLetters = new HashSet<>();
         this.attempts = 6; 
+        this.maxAttempts = 6;
+    }
+
+    public void setNumPlayers(int numPlayers) {
+        this.maxAttempts = 6 * numPlayers;
+        this.attempts = this.maxAttempts;
     }
 
     public String getMask() {

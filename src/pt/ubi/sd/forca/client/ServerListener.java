@@ -61,6 +61,13 @@ public class ServerListener extends Thread {
             int totalPlayers = Integer.parseInt(parts[2]);
             ConsoleUI.showWelcome(myId, totalPlayers);
 
+        } else if (message.startsWith("LOBBY_UPDATE")) {
+            // Ex: "LOBBY_UPDATE 2 20"
+            String[] parts = message.split(" ");
+            int totalPlayers = Integer.parseInt(parts[1]);
+            int timeLeft = Integer.parseInt(parts[2]);
+            ConsoleUI.updateLobby(totalPlayers, timeLeft);
+
         } else if (message.startsWith("START")) {
             // Ex: "START __S____ 6 30000"
             String[] parts = message.split(" ");

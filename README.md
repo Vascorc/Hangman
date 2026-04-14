@@ -39,6 +39,7 @@ Para manter o projeto organizado, os ficheiros `.java` da pasta `src` são compi
 
 **No Windows (CMD/PowerShell):**
 ```
+if not exist bin mkdir bin
 javac -d bin -sourcepath src src/pt/ubi/sd/forca/server/ServerMain.java src/pt/ubi/sd/forca/client/ClientMain.java src/pt/ubi/sd/forca/shared/*.java
 ```
 

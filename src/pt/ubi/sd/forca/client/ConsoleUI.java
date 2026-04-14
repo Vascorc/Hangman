@@ -13,9 +13,27 @@ import java.util.Scanner;
  */
 public class ConsoleUI {
 
+    private static volatile boolean inLobby = false;
+    private static Thread lobbyTimerThread;
+    private static volatile int lobbyTimeLeft = 0;
+    private static volatile int lobbyPlayers = 0;
+
+    public static void stopLobbyTimer() {
+        inLobby = false;
+        if (lobbyTimerThread != null) {
+            lobbyTimerThread.interrupt();
+        }
+    }
+
+    public static void clearConsole() {
+        System.out.print("\033[H\033[2J\033[3J");
+        System.out.flush();
+    }
+
     // Menu de entrada
     public static int showMainMenu(Scanner scanner) {
         String option = "";
+        clearConsole();
 
         while (true) {
             System.out.println("\n" + "═".repeat(45));
@@ -59,22 +77,21 @@ public class ConsoleUI {
 
     // ─── Forca ASCII ───────────────────────────────────────────
 
+    private static int maxAttempts = 6; // inicial
+
     /**
-     * Desenha o boneco da forca com base no número de tentativas RESTANTES.
-     * O jogo começa com 6 tentativas, então:
-     * 6 tentativas → boneco vazio
-     * 0 tentativas → boneco completo (perdeu)
+     * Desenha o boneco da forca com base no número de tentativas RESTANTES e o valor máximo.
      */
     public static void drawHangman(int attemptsLeft) {
-        // Calculamos quantas partes do boneco já foram "penduradas"
-        int errors = 6 - attemptsLeft;
+        // Reduzimos as partes penduradas proporcionalmente a 6 fases
+        int erroCount = 6 - (int) Math.ceil((double) attemptsLeft * 6 / Math.max(maxAttempts, 1));
 
-        String head = errors >= 1 ? "O" : " ";
-        String body = errors >= 2 ? "|" : " ";
-        String lArm = errors >= 3 ? "/" : " ";
-        String rArm = errors >= 4 ? "\\" : " ";
-        String lLeg = errors >= 5 ? "/" : " ";
-        String rLeg = errors >= 6 ? "\\" : " ";
+        String head = erroCount >= 1 ? "O" : " ";
+        String body = erroCount >= 2 ? "|" : " ";
+        String lArm = erroCount >= 3 ? "/" : " ";
+        String rArm = erroCount >= 4 ? "\\" : " ";
+        String lLeg = erroCount >= 5 ? "/" : " ";
+        String rLeg = erroCount >= 6 ? "\\" : " ";
 
         System.out.println("  ┌───┐");
         System.out.println("  │   " + head);
@@ -88,17 +105,72 @@ public class ConsoleUI {
 
     /** Mostrado ao receber WELCOME */
     public static void showWelcome(int playerId, int totalPlayers) {
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
         System.out.println("  🎮  BEM-VINDO AO JOGO DA FORCA (UBI)");
         System.out.println(SEPARATOR);
         System.out.println("  O teu ID: Jogador " + playerId);
         System.out.println("  Jogadores no lobby: " + totalPlayers);
         System.out.println("  A aguardar o início do jogo...");
+        System.out.println("  Tempo para início de jogo: 20s");
         System.out.println(SEPARATOR);
+
+        inLobby = true;
+        lobbyPlayers = totalPlayers;
+        lobbyTimeLeft = 20;
+        startLobbyCountdown();
+    }
+
+    public static void updateLobby(int totalPlayers, int timeLeft) {
+        if (!inLobby) return;
+        lobbyPlayers = totalPlayers;
+        lobbyTimeLeft = timeLeft;
+        startLobbyCountdown();
+    }
+
+    private static void startLobbyCountdown() {
+        if (lobbyTimerThread != null) {
+            lobbyTimerThread.interrupt();
+        }
+
+        lobbyTimerThread = new Thread(() -> {
+            while (inLobby && lobbyTimeLeft > 0) {
+                try {
+                    Thread.sleep(1000);
+                    lobbyTimeLeft--;
+                    if (inLobby) {
+                        String timeStr = String.format("%02d", lobbyTimeLeft);
+                        System.out.print("\033[s"); // guarda posição original do cursor
+                        
+                        // Sobe 4 linhas para "Jogadores no lobby"
+                        System.out.print("\033[4A"); 
+                        System.out.print("\r  Jogadores no lobby: " + lobbyPlayers + " \033[K");
+                        
+                        // Desce 1 linha para "A aguardar o início..."
+                        System.out.print("\033[1B"); 
+                        System.out.print("\r  A aguardar o início do jogo... \033[K");
+                        
+                        // Desce 1 linha para "Tempo para início..."
+                        System.out.print("\033[1B"); 
+                        System.out.print("\r  Tempo para início de jogo: " + timeStr + "s \033[K");
+                        
+                        System.out.print("\033[u"); // restaura o cursor para baixo
+                        System.out.flush();
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        lobbyTimerThread.setDaemon(true);
+        lobbyTimerThread.start();
     }
 
     /** Mostrado ao receber START */
     public static void showStart(String mask, int attempts, int timeoutMs) {
+        stopLobbyTimer();
+        clearConsole();
+        maxAttempts = attempts; // Atualiza o limite máximo real baseado nos npcs/players
         System.out.println("\n" + SEPARATOR);
         System.out.println("  🚀  JOGO INICIADO!");
         System.out.println(SEPARATOR);
@@ -115,6 +187,7 @@ public class ConsoleUI {
     /** Mostrado ao receber ROUND <k> */
     public static void showRound(int round, String mask, int attempts, String usedLetters) {
         currentRound = round;
+        clearConsole();
         
         System.out.println("\n" + SEPARATOR);
         System.out.println("  📍  RONDA " + round + "   |   ⏳ Tempo: 30s");
@@ -141,6 +214,7 @@ public class ConsoleUI {
 
     /** Mostrado ao receber END WIN */
     public static void showWin(String winnerIds, String word, int myId) {
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
 
         // Verifica se o jogador local está entre os vencedores
@@ -165,6 +239,7 @@ public class ConsoleUI {
 
     /** Mostrado ao receber END LOSE */
     public static void showLose(String word) {
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
         System.out.println("  💀  PERDERAM! Não há mais tentativas.");
         System.out.println("  A palavra era: " + word);
@@ -174,6 +249,8 @@ public class ConsoleUI {
 
     /** Mostrado ao receber FULL */
     public static void showFull() {
+        stopLobbyTimer();
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
         System.out.println("  ⛔  Servidor cheio! Tenta mais tarde.");
         System.out.println(SEPARATOR);
@@ -181,6 +258,7 @@ public class ConsoleUI {
 
     /** Mostrado ao receber PLAYER_LEFT (jogador desconectou-se a meio do jogo) */
     public static void showPlayerLeft(int playerId) {
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
         System.out.println("  ❌  JOGO TERMINADO — Jogador " + playerId + " desconectou-se.");
         System.out.println(SEPARATOR);
@@ -188,6 +266,8 @@ public class ConsoleUI {
 
     /** Mostrado ao receber CANCELLED (lobby cancelado por falta de jogadores) */
     public static void showCancelled() {
+        stopLobbyTimer();
+        clearConsole();
         System.out.println("\n" + SEPARATOR);
         System.out.println("  ⏱  LOBBY CANCELADO — Jogadores insuficientes.");
         System.out.println("  O jogo precisa de pelo menos 2 jogadores.");

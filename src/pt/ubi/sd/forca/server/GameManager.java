@@ -34,6 +34,10 @@ public class GameManager {
     }
 
     public synchronized void playerDisconnected(ClientHandler player) {
+        if (!players.contains(player)) {
+            return; // Ignora se o jogador foi rejeitado por excesso de lotação ou lobby cheio
+        }
+        
         players.remove(player);
         System.out.println("Removida referência da Player pool.");
         if (gameStarted) {
@@ -76,14 +80,17 @@ public class GameManager {
     }
 
     private void checkLobbyStatus() {
-        if (players.size() == 1) {
-            startLobbyTimer();
-        } else if (players.size() == 4) {
+        if (players.size() == 4) {
             startGame();
+        } else if (players.size() >= 1) { // Sempre que entra alguem (ou o primeiro), inicia ou reinicia o timer do lobby
+            startLobbyTimer();
         }
     }
 
     private void startLobbyTimer() {
+        if (lobbyTimer != null) {
+            lobbyTimer.cancel();
+        }
         lobbyTimer = new Timer(true); // daemon timer
         lobbyTimer.schedule(new TimerTask() {
             @Override
@@ -102,7 +109,9 @@ public class GameManager {
                     }
                 }
             }
-        }, 20000);
+        }, 20000); // 20 segundos
+        
+        broadcast(Protocol.LOBBY_UPDATE + " " + players.size() + " 20");
     }
 
     private void startGame() {
@@ -112,6 +121,7 @@ public class GameManager {
         }
         gameStarted = true;
         roundNumber = 1;
+        engine.setNumPlayers(players.size());
 
         // Mensagem inicial de acordo com o protocolo
         broadcast(Protocol.START + " " + engine.getMask() + " " + engine.getAttempts() + " 30000");
