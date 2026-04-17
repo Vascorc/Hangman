@@ -37,21 +37,13 @@ public class ClientHandler extends Thread {
     @Override
     public void run() {
         try {
-            socket.setSoTimeout(30000); // 30 segundos timeout por ronda
-
             while (true) {
-                try {
-                    String line = in.readLine();
-                    if (line == null)
-                        break; // Desconexão limpa
-                    if (line.startsWith(Protocol.GUESS)) {
-                        String move = line.substring(6).trim(); // Remove "GUESS "
-                        manager.handlePlayerMove(playerId, move);
-                    }
-                } catch (java.net.SocketTimeoutException e) {
-                    if (manager.isGameStarted()) {
-                        manager.handlePlayerMove(playerId, ""); // Jogada vazia no timeout
-                    }
+                String line = in.readLine();
+                if (line == null)
+                    break; // Desconexão limpa
+                if (line.startsWith(Protocol.GUESS)) {
+                    String move = line.substring(6).trim(); // Remove "GUESS "
+                    manager.handlePlayerMove(playerId, move);
                 }
             }
         } catch (IOException e) {

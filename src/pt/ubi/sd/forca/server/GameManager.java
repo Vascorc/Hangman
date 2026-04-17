@@ -20,6 +20,7 @@ public class GameManager {
     private GameEngine engine; // não-final para poder ser resetado entre jogos
     private boolean gameStarted = false;
     private Timer lobbyTimer;
+    private Timer roundTimer;
     private int roundNumber = 1;
 
     // Usamos um HashMap normal, vamos proteger o acesso com synchronized(this)
@@ -136,6 +137,27 @@ public class GameManager {
                     + " " + engine.getUsedLetters();
             roundNumber++;
             broadcast(state);
+
+            if (roundTimer != null) {
+                roundTimer.cancel();
+            }
+            roundTimer = new Timer(true);
+            final int currentRnd = roundNumber - 1;
+            roundTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    synchronized (GameManager.this) {
+                        if (gameStarted && currentRnd == (roundNumber - 1)) {
+                            // Após 30s as jogadas não submetidas contam como vazio (penalização)
+                            for (ClientHandler p : players) {
+                                if (!currentRoundMoves.containsKey(p.getPlayerId())) {
+                                    handlePlayerMove(p.getPlayerId(), "");
+                                }
+                            }
+                        }
+                    }
+                }
+            }, 30000);
         }
     }
 
@@ -203,6 +225,10 @@ public class GameManager {
 
     private void stopGame() {
         gameStarted = false;
+        if (roundTimer != null) {
+            roundTimer.cancel();
+            roundTimer = null;
+        }
         for (ClientHandler p : players) {
             p.closeConnection();
         }
