@@ -181,10 +181,9 @@ public class GameManager {
             }
         }
 
-        // Processar apenas jogadas únicas para evitar penalidades duplicadas
-        Set<String> uniqueMoves = new HashSet<>(currentRoundMoves.values());
-        for (String move : uniqueMoves) {
-            engine.processGuess(move); // processGuess já ignora vazias e letras já usadas
+        // Processar todas as jogadas para que múltiplas falhas (mesmo iguais) descontem múltiplas vidas
+        for (String move : currentRoundMoves.values()) {
+            engine.processGuess(move);
         }
 
         // Verificar vitória ou derrota

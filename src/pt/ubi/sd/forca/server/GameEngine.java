@@ -31,8 +31,8 @@ public class GameEngine {
     }
 
     public void setNumPlayers(int numPlayers) {
-        this.maxAttempts = 6 * numPlayers;
-        this.attempts = this.maxAttempts;
+        this.maxAttempts = 6; // Vidas fixas (partilhadas por todos)
+        this.attempts = 6;
     }
 
     public String getMask() {

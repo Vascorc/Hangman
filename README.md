@@ -37,41 +37,21 @@ src/pt/ubi/sd/forca/
 ### 1. Compilação (Universal)
 Para manter o projeto organizado, os ficheiros `.java` da pasta `src` são compilados para uma pasta de saída chamada `bin`.
 
-**No Windows (CMD/PowerShell):**
 ```
-if not exist bin mkdir bin
-javac -d bin -sourcepath src src/pt/ubi/sd/forca/server/ServerMain.java src/pt/ubi/sd/forca/client/ClientMain.java src/pt/ubi/sd/forca/shared/*.java
-```
-
-
-**No Linux / macOS (Terminal):**
-```
-mkdir -p bin
 javac -d bin -sourcepath src src/pt/ubi/sd/forca/server/ServerMain.java src/pt/ubi/sd/forca/client/ClientMain.java src/pt/ubi/sd/forca/shared/*.java
 ```
 
 ### 2. Execução do Servidor
 O servidor deve ser o primeiro componente a ser iniciado.
 
-**Windows:**
 ```
 java -cp bin pt.ubi.sd.forca.server.ServerMain
 ```
 
-**Linux / macOS:**
-```
-java -cp bin pt.ubi.sd.forca.server.ServerMain
-```
 
 ### 3. Execução do Cliente
 Podes abrir múltiplos terminais (entre 2 a 4) para simular diferentes jogadores.
 
-**Windows:**
-```
-java -cp bin pt.ubi.sd.forca.client.ClientMain
-```
-
-**Linux / macOS:**
 ```
 java -cp bin pt.ubi.sd.forca.client.ClientMain
 ```

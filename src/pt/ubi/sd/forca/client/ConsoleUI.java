@@ -37,7 +37,7 @@ public class ConsoleUI {
 
         while (true) {
             System.out.println("\n" + "═".repeat(45));
-            System.out.println("       🎮 JOGO DA FORCA MULTIJOGADOR 🎮       ");
+            System.out.println("       JOGO DA FORCA MULTIJOGADOR       ");
             System.out.println("═".repeat(45));
             System.out.println("  1. Ligar ao Servidor e Jogar");
             System.out.println("  2. Ver Regras do Jogo");
@@ -54,10 +54,10 @@ public class ConsoleUI {
                     showRules(scanner); // Mostra as regras e volta a desenhar o menu
                     break;
                 case "0":
-                    System.out.println("  A sair... Obrigado por jogares!");
+                    System.out.println("A sair... Obrigado por jogares!");
                     return 0; // Código para terminar o programa
                 default:
-                    System.out.println("  ⚠️ Opção inválida! Tenta novamente.");
+                    System.out.println("Opção inválida! Tenta novamente.");
             }
         }
     }
@@ -83,15 +83,16 @@ public class ConsoleUI {
      * Desenha o boneco da forca com base no número de tentativas RESTANTES e o valor máximo.
      */
     public static void drawHangman(int attemptsLeft) {
-        // Reduzimos as partes penduradas proporcionalmente a 6 fases
-        int erroCount = 6 - (int) Math.ceil((double) attemptsLeft * 6 / Math.max(maxAttempts, 1));
+        // O jogo tem 6 vidas (tentativas) no total, partilhadas por todos.
+        int erroCount = maxAttempts - attemptsLeft;
+        if (erroCount < 0) erroCount = 0;
 
         String head = erroCount >= 1 ? "O" : " ";
         String body = erroCount >= 2 ? "|" : " ";
-        String lArm = erroCount >= 3 ? "/" : " ";
-        String rArm = erroCount >= 4 ? "\\" : " ";
-        String lLeg = erroCount >= 5 ? "/" : " ";
-        String rLeg = erroCount >= 6 ? "\\" : " ";
+        String rArm = erroCount >= 3 ? "\\" : " "; // Braço direito (visualmente na direita)
+        String lArm = erroCount >= 4 ? "/" : " ";  // Braço esquerdo (visualmente na esquerda)
+        String lLeg = erroCount >= 5 ? "/" : " ";  // Perna esquerda
+        String rLeg = erroCount >= 6 ? "\\" : " "; // Perna direita
 
         System.out.println("  ┌───┐");
         System.out.println("  │   " + head);
@@ -172,7 +173,7 @@ public class ConsoleUI {
         clearConsole();
         maxAttempts = attempts; // Atualiza o limite máximo real baseado nos npcs/players
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  🚀  JOGO INICIADO!");
+        System.out.println("JOGO INICIADO!");
         System.out.println(SEPARATOR);
         System.out.println("  Palavra: " + formatMask(mask));
         System.out.println("  Tentativas: " + attempts);
@@ -190,7 +191,7 @@ public class ConsoleUI {
         clearConsole();
         
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  📍  RONDA " + round + "   |   ⏳ Tempo: 30s");
+        System.out.println(" RONDA " + round + "   |   Tempo: 30s");
         System.out.println(SEPARATOR);
         drawHangman(attempts);
         System.out.println("  Palavra: " + formatMask(mask));
@@ -227,10 +228,12 @@ public class ConsoleUI {
         }
 
         if (iWon) {
-            System.out.println("  🏆  PARABÉNS! GANHASTE!");
-        } else {
-            System.out.println("  🎉  FIM DO JOGO — Alguém ganhou!");
+            System.out.println(" PARABÉNS! GANHASTE!");
             System.out.println("  Vencedor(es): Jogador(es) " + winnerIds);
+        } else {
+            System.out.println(" FIM DO JOGO");
+            System.out.println("  Vencedor(es): Jogador(es) " + winnerIds);
+
         }
 
         System.out.println("  A palavra era: " + word);
@@ -241,8 +244,8 @@ public class ConsoleUI {
     public static void showLose(String word) {
         clearConsole();
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  💀  PERDERAM! Não há mais tentativas.");
-        System.out.println("  A palavra era: " + word);
+        System.out.println("PERDERAM! Não há mais tentativas.");
+        System.out.println("A palavra era: " + word);
         drawHangman(0); // Boneco completo
         System.out.println(SEPARATOR);
     }
@@ -252,7 +255,7 @@ public class ConsoleUI {
         stopLobbyTimer();
         clearConsole();
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  ⛔  Servidor cheio! Tenta mais tarde.");
+        System.out.println("Servidor cheio! Tenta mais tarde.");
         System.out.println(SEPARATOR);
     }
 
@@ -260,7 +263,7 @@ public class ConsoleUI {
     public static void showPlayerLeft(int playerId) {
         clearConsole();
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  ❌  JOGO TERMINADO — Jogador " + playerId + " desconectou-se.");
+        System.out.println("JOGO TERMINADO — Jogador " + playerId + " desconectou-se.");
         System.out.println(SEPARATOR);
     }
 
@@ -269,8 +272,8 @@ public class ConsoleUI {
         stopLobbyTimer();
         clearConsole();
         System.out.println("\n" + SEPARATOR);
-        System.out.println("  ⏱  LOBBY CANCELADO — Jogadores insuficientes.");
-        System.out.println("  O jogo precisa de pelo menos 2 jogadores.");
+        System.out.println("LOBBY CANCELADO — Jogadores insuficientes.");
+        System.out.println("O jogo precisa de pelo menos 2 jogadores.");
         System.out.println(SEPARATOR);
     }
 
@@ -292,7 +295,7 @@ public class ConsoleUI {
                         // Guarda o cursor, sobe N linhas, reescreve a linha inteira da Ronda, desce/restaura o cursor
                         System.out.print("\033[s"); // save cursor
                         System.out.print("\033[" + linesToMoveUp + "A"); // move cursor up
-                        System.out.print("\r  📍  RONDA " + currentRound + "   |   ⏳ Tempo: " + timeStr + "s \033[K");
+                        System.out.print("\rRONDA " + currentRound + "   |   Tempo: " + timeStr + "s \033[K");
                         System.out.print("\033[u"); // restore cursor
                         System.out.flush();
                     }
