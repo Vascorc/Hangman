@@ -25,7 +25,45 @@ public class ConsoleUI {
         }
     }
 
+    private static volatile boolean roundTimerActive = false;
+    private static Thread roundTimerThread;
+
+    public static void stopRoundTimer() {
+        roundTimerActive = false;
+        if (roundTimerThread != null) {
+            roundTimerThread.interrupt();
+            roundTimerThread = null;
+        }
+    }
+
+    public static void startRoundCountdown() {
+        stopRoundTimer();
+        roundTimerActive = true;
+        roundTimerThread = new Thread(() -> {
+            int time = 30; // 30 segundos
+            while (roundTimerActive && time > 0) {
+                try {
+                    Thread.sleep(1000);
+                    time--;
+                    if (roundTimerActive) {
+                        String timeStr = String.format("%02d", time);
+                        System.out.print("\033[s"); // guarda posição original do cursor
+                        System.out.print("\033[" + linesToMoveUp + "A"); // sobe N linhas até a linha RONDA
+                        System.out.print("\rRONDA " + currentRound + "   |   Tempo: " + timeStr + "s \033[K");
+                        System.out.print("\033[u"); // restaura o cursor
+                        System.out.flush();
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        roundTimerThread.setDaemon(true);
+        roundTimerThread.start();
+    }
+
     public static void clearConsole() {
+        stopRoundTimer();
         System.out.print("\033[H\033[2J\033[3J");
         System.out.flush();
     }
@@ -204,6 +242,7 @@ public class ConsoleUI {
         }
         System.out.println(SEPARATOR);
         System.out.print("  A tua jogada (letra ou palavra completa): ");
+        startRoundCountdown();
     }
 
     /** Mostrado ao receber STATE (atualização intermédia) */
@@ -279,42 +318,18 @@ public class ConsoleUI {
 
     // ─── Leitura de input ──────────────────────────────────────
 
-    private static volatile boolean waitingForInput = false;
-
     public static String readGuess(Scanner scanner) {
-        waitingForInput = true;
-        
-        Thread timer = new Thread(() -> {
-            int time = 30; // 30 segundos
-            while (waitingForInput && time > 0) {
-                try {
-                    Thread.sleep(1000);
-                    time--;
-                    if (waitingForInput) {
-                        String timeStr = String.format("%02d", time);
-                        // Guarda o cursor, sobe N linhas, reescreve a linha inteira da Ronda, desce/restaura o cursor
-                        System.out.print("\033[s"); // save cursor
-                        System.out.print("\033[" + linesToMoveUp + "A"); // move cursor up
-                        System.out.print("\rRONDA " + currentRound + "   |   Tempo: " + timeStr + "s \033[K");
-                        System.out.print("\033[u"); // restore cursor
-                        System.out.flush();
-                    }
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-        });
-        timer.setDaemon(true);
-        timer.start();
-
         String result = null;
         if (scanner.hasNextLine()) {
             result = scanner.nextLine().trim();
         }
         
-        waitingForInput = false;
-        timer.interrupt();
-        
+        // Assim que o utilizador carrega no Enter, o terminal cria uma nova linha.
+        // Aumentamos o tracking de linhas para que o temporizador atualize no sítio certo.
+        linesToMoveUp++;
+        System.out.println("  [Jogada submetida! A aguardar pelos outros jogadores...]");
+        linesToMoveUp++; // porque o println acabou de inserir uma nova linha
+
         return result;
     }
 
